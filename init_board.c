@@ -58,7 +58,7 @@ void initBoard(void)
   initI2S();
   /* Initialize debug prints. Note: debug prints are off by default. See DEBUG_LEVEL in app.h */
   initLog();                                                        // have to call the init before calling bpt_init()
-  bpt_init(); // bio-sensor initilization
+  //bpt_init(); // bio-sensor initilization
 
 }
 

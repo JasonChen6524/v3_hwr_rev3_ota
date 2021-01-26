@@ -12,6 +12,7 @@
  **************************************************************************************************/
 
 /* Board headers */
+#include "ota_dfu_multislot.h"                    // Added by Jason
 #include "ble-configuration.h"
 #include "board_features.h"
 
@@ -87,6 +88,7 @@ static const uint8_t eddystone_data[EDDYSTONE_DATA_LEN] = {
 static uint8 _conn_handle = 0xFF;
 static int _main_state;
 
+static uint8_t boot_to_dfu = 0;                   //Jason
 tsCounters _sCounters;
 
 static uint8 _max_packet_size = 20; // Maximum bytes per one packet
@@ -188,6 +190,8 @@ U8 sectic = TIC_TIMER_PERSEC;
     	evt = gecko_wait_event();
     }
 
+    ota_dfu_handle_event(evt);            // Added by Jason
+
     /* Handle events */
    switch (BGLIB_MSG_ID(evt->header)) 
    {
@@ -252,16 +256,26 @@ U8 sectic = TIC_TIMER_PERSEC;
     	break;
 
       case gecko_evt_le_connection_closed_id:
-         printLog("DISCONNECTED!\r\n");
+         //printLog("DISCONNECTED!\r\n");
+         printLog("connection closed, reason: 0x%2.2x\r\n", evt->data.evt_le_connection_closed.reason);
 
          /* Show statistics (RX/TX counters) after disconnect: */
          printStats(&_sCounters);
 
          reset_variables();
-         SLEEP_SleepBlockEnd(sleepEM2); // Enable sleeping
+         SLEEP_SleepBlockEnd(sleepEM2); // Enable sleeping                 //Commented by Jason
 
          /* Restart advertising */
-         gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_undirected_connectable);
+         //gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_undirected_connectable);
+
+        /* Check if need to boot to OTA DFU mode */
+        if (boot_to_dfu) {
+          /* Enter to OTA DFU mode */
+          gecko_cmd_system_reset(2);
+        } else {
+          /* Restart advertising after client has disconnected */
+          gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_connectable_scannable);
+        }
     	break;
 
       case gecko_evt_gatt_server_characteristic_status_id:
@@ -283,7 +297,7 @@ U8 sectic = TIC_TIMER_PERSEC;
                   printLog("SPP Mode OFF\r\n");
                   _main_state = STATE_CONNECTED;
                   v3status.spp = STATE_CONNECTED;
-                  SLEEP_SleepBlockEnd(sleepEM2); // Enable sleeping
+                  SLEEP_SleepBlockEnd(sleepEM2); // Enable sleeping                         //Commented by Jason
                }
 
     		}
@@ -334,8 +348,8 @@ U8 sectic = TIC_TIMER_PERSEC;
 			 fbseq(); // Step the feedback player (Haptic and buzzer)
 
 			 //Jason // For Bio-Sensor estimation -
-			 if((v3status.spp == STATE_CONNECTED)||(v3status.spp == STATE_SPP_MODE))  bpt_main();
-			 else  bpt_main_reset();
+			 //if((v3status.spp == STATE_CONNECTED)||(v3status.spp == STATE_SPP_MODE))  bpt_main();
+			 //else  bpt_main_reset();
 
 			 //bpt_main();   // For Bio-Sensor estimation - Jason had this in the main while(1) loop.  Should go here?  Need to test
 
